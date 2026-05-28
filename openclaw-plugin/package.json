@@ -1,6 +1,6 @@
 {
   "name": "@weiping/openclaw-superpowers",
-  "version": "5.0.7",
+  "version": "5.1.0",
   "description": "Superpowers workflow skills for OpenClaw: TDD, debugging, planning with Chinese trigger support",
   "keywords": [
     "openclaw",
