@@ -15,11 +15,11 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mystery4f/pi-superpowers.git"
+    "url": "https://github.com/mystery4f/mystery4f-pi-superpowers.git"
   },
-  "homepage": "https://github.com/mystery4f/pi-superpowers#readme",
+  "homepage": "https://github.com/mystery4f/mystery4f-pi-superpowers#readme",
   "bugs": {
-    "url": "https://github.com/mystery4f/pi-superpowers/issues"
+    "url": "https://github.com/mystery4f/mystery4f-pi-superpowers/issues"
   },
   "files": [
     "extensions/**/*.ts",
