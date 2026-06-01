@@ -1,7 +1,7 @@
 {
-  "name": "@weiping/pi-superpowers",
-  "version": "5.1.0",
-  "description": "Superpowers skills library for Pi: TDD, debugging, collaboration workflows with Chinese trigger support",
+  "name": "@mystery4f/pi-superpowers",
+  "version": "5.2.0",
+  "description": "Superpowers skills library for Pi: TDD, debugging, collaboration workflows with Chinese trigger support (forked from @weiping/pi-superpowers, updated SDK to @earendil-works)",
   "keywords": [
     "pi-package",
     "skills",
@@ -10,16 +10,16 @@
     "workflow",
     "chinese"
   ],
-  "author": "Ported from obra/superpowers",
+  "author": "Forked from obra/superpowers & weiping/pi-superpowers",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/weiping/pi-superpowers.git"
+    "url": "https://github.com/mystery4f/pi-superpowers.git"
   },
-  "homepage": "https://github.com/weiping/pi-superpowers#readme",
+  "homepage": "https://github.com/mystery4f/pi-superpowers#readme",
   "bugs": {
-    "url": "https://github.com/weiping/pi-superpowers/issues"
+    "url": "https://github.com/mystery4f/pi-superpowers/issues"
   },
   "files": [
     "extensions/**/*.ts",
@@ -53,6 +53,6 @@
     "vitest": "^2.0.0"
   },
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": "*"
+    "@earendil-works/pi-coding-agent": ">=0.75.0"
   }
 }

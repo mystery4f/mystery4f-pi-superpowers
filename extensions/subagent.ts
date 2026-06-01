@@ -16,7 +16,7 @@
  * If `pi` is not found, the tool returns an error message without crashing.
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { buildRolePrompt, buildPiArgs, parseSubagentResult } from "./subagent-utils.js";
 
