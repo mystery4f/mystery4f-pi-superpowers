@@ -70,10 +70,12 @@ Each agent gets:
 ### 3. Dispatch in Parallel
 
 ```typescript
-// In Claude Code / AI environment
-Task("Fix agent-tool-abort.test.ts failures")
-Task("Fix batch-completion-behavior.test.ts failures")
-Task("Fix tool-approval-race-conditions.test.ts failures")
+// 使用 pi-subagents 的并行模式
+subagent({ tasks: [
+  { agent: "worker", task: "Fix agent-tool-abort.test.ts failures" },
+  { agent: "worker", task: "Fix batch-completion-behavior.test.ts failures" },
+  { agent: "worker", task: "Fix tool-approval-race-conditions.test.ts failures" }
+], concurrency: 3 })
 // All three run concurrently
 ```
 

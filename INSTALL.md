@@ -212,7 +212,13 @@ Pi 启动时应显示通知：
 
 **期望行为**：AI 进入 brainstorming 技能流程，开始探索需求和设计方案。
 
-### 步骤 6：确认 `dispatch_agent` 工具已注册
+### 步骤 6：确认子代理工具已注册
+
+安装 [pi-subagents](https://github.com/nicobailon/pi-subagents)：
+
+```bash
+pi install npm:pi-subagents
+```
 
 在 Pi 会话中输入：
 
@@ -220,17 +226,7 @@ Pi 启动时应显示通知：
 你：列出所有可用工具
 ```
 
-**期望行为**：工具列表中出现 `dispatch_agent`（Dispatch Subagent）。
-
-也可直接测试：
-
-```
-你：使用 dispatch_agent 工具，派发一个子代理帮我检查当前目录下的文件数量
-```
-
-**期望行为**：AI 调用 `dispatch_agent` 工具，`pi --no-session --print` 子进程运行并返回结果。
-
-> ⚠️ `dispatch_agent` 需要 `pi` 二进制在 `$PATH` 中可访问。若报 `ENOENT` 错误，说明 `pi` 命令不在 PATH 中，顺序执行降级模式仍可正常使用。
+**期望行为**：工具列表中出现 `subagent`（来自 pi-subagents）。
 
 ---
 
@@ -272,7 +268,7 @@ Pi 启动时应显示通知：
 }
 ```
 
-### 禁用所有扩展（仅用技能，不自动注入，不注册 dispatch_agent）
+### 禁用所有扩展（仅用技能，不自动注入）
 
 ```json
 {
@@ -285,18 +281,22 @@ Pi 启动时应显示通知：
 }
 ```
 
-### 只禁用 `dispatch_agent`（保留 Bootstrap 注入）
+### 只禁用 Bootstrap 注入（保留技能）
+
+此包现仅注册 `bootstrap.ts` 一个扩展，如需禁用：
 
 ```json
 {
   "packages": [
     {
       "source": "/Users/liuweiping/repos/pi-superpowers",
-      "extensions": ["./extensions/bootstrap.ts"]
+      "extensions": []
     }
   ]
 }
 ```
+
+子代理功能由独立的 [pi-subagents](https://github.com/nicobailon/pi-subagents) 包提供，单独安装：`pi install npm:pi-subagents`
 
 ### 排除个别技能（加载其余全部）
 

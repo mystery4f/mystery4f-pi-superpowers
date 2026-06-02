@@ -7,13 +7,14 @@ Use this template when dispatching a code quality reviewer subagent.
 **Only dispatch after spec compliance review passes.**
 
 ```
-Task tool (general-purpose):
+subagent({ agent: "reviewer", task: `
   Use template at requesting-code-review/code-reviewer.md
 
   DESCRIPTION: [task summary, from implementer's report]
   PLAN_OR_REQUIREMENTS: Task N from [plan-file]
   BASE_SHA: [commit before task]
   HEAD_SHA: [current commit]
+` })
 ```
 
 **In addition to standard code quality concerns, the reviewer should check:**

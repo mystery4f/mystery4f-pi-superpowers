@@ -31,8 +31,7 @@
   ],
   "pi": {
     "extensions": [
-      "./extensions/bootstrap.ts",
-      "./extensions/subagent.ts"
+      "./extensions/bootstrap.ts"
     ],
     "skills": [
       "./skills"

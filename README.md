@@ -9,7 +9,7 @@
 - 🇨🇳 **Chinese trigger words**: Every skill supports bilingual (Chinese/English) triggers — Chinese queries automatically match the corresponding skill
 - 🔌 **Bootstrap extension**: Skill usage rules are automatically injected into context at the start of every session
 - 🔧 **Tool mapping**: Automatically maps original Claude Code tools (`Skill`, `TodoWrite`, `Task`) to Pi equivalents
-- 🤖 **`dispatch_agent` tool**: Simulates Claude Code's `Task` sub-agent with context isolation via `pi --no-session --print` subprocess
+- 🤖 **Subagent dispatch**: Integrates [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) for full subagent orchestration (Chain, Parallel, Clarify UI)
 - ⚡ **Prompt templates**: 3 slash commands (`/brainstorm`, etc.)
 
 ---
@@ -20,7 +20,7 @@
 - [Typical Workflows](#typical-workflows)
 - [Prompt Template Commands](#prompt-template-commands)
 - [Tool Mapping Reference](#tool-mapping-reference)
-- [dispatch_agent Tool](#dispatch_agent-tool)
+
 - [Bootstrap Injection Mechanism](#bootstrap-injection-mechanism)
 - [Known Limitations](#known-limitations)
 - [Installation](#installation)
@@ -143,7 +143,7 @@ Pi tool names differ from Claude Code's originals. The Bootstrap extension injec
 |--------------------------|---------------|
 | `Skill` tool | Use `read` to load `skills/<name>/SKILL.md`, or use the `/skill:<name>` command |
 | `TodoWrite` | Use `write`/`edit` to manage `TODO.md` at the project root (Markdown checkbox format) |
-| `Task` (sub-agent dispatch) | **Option A (fallback) Sequential mode**: implement tasks one by one in the current conversation with role-switching for review; **Option B (recommended) `dispatch_agent` tool**: true context isolation via `pi --no-session --print` subprocess (see below) |
+| `Task` (sub-agent dispatch) | Use [pi-subagents](https://github.com/nicobailon/pi-subagents)'s `subagent` tool, supporting single agent, parallel, chain, and more |
 | `Read` | `read` (same name, use directly) |
 | `Write` | `write` (same name, use directly) |
 | `Edit` | `edit` (same name, use directly) |
@@ -173,38 +173,44 @@ Task status is tracked in a `TODO.md` file:
 
 ---
 
-## dispatch_agent Tool
+## pi-subagents Integration
 
-#### Option B: `dispatch_agent` Tool (recommended, requires `pi` in PATH)
+pi-superpowers integrates with [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) for full subagent orchestration.
 
-`dispatch_agent` is a custom tool registered by pi-superpowers (`extensions/subagent.ts`). It achieves true context isolation by launching a `pi --no-session --print` subprocess, matching the behavior of Claude Code's `Task` tool.
-
-**LLM call example:**
-```
-dispatch_agent({
-  task: "Implement user auth middleware: 1) validate JWT 2) handle expiration 3) write unit tests",
-  role: "implementer"
-})
-```
-
-**Supported roles (`role` parameter):**
-
-| Role | Description |
-|------|-------------|
-| `implementer` | Implements the task, writes tests, self-reviews |
-| `spec-reviewer` | Independently verifies the implementation against the spec (critical perspective) |
-| `code-quality-reviewer` | Reviews code quality; runs only after Spec review passes |
-| _(omitted)_ | General-purpose sub-agent with no role restriction |
-
-**Underlying implementation:**
+**Install pi-subagents:**
 ```bash
-# When role = "implementer", equivalent to:
-pi --no-session --print \
-   --append-system-prompt "You are a implementer." \
-   "Implement user auth middleware: ..."
+pi install npm:pi-subagents
 ```
 
-**Prerequisite**: The `pi` binary must be accessible in `$PATH`. If not found, the tool returns a clear error message rather than crashing.
+**LLM call examples:**
+```typescript
+// Single agent
+subagent({ agent: "worker", task: "Implement user auth middleware..." })
+
+// Chain: implement → review → fix
+subagent({ chain: [
+  { agent: "worker", task: "Implement JWT auth" },
+  { agent: "reviewer", task: "Review spec compliance" },
+  { agent: "worker", task: "Fix review findings" }
+]})
+
+// Parallel review
+subagent({ tasks: [
+  { agent: "reviewer", task: "Review spec compliance" },
+  { agent: "reviewer", task: "Review code quality" }
+], concurrency: 2 })
+```
+
+**Role mapping:**
+
+| Original superpowers role | pi-subagents builtin agent | Usage |
+|------|------|------|
+| implementer | `worker` | Implement code, write tests |
+| spec-reviewer | `reviewer` | Review spec compliance |
+| code-quality-reviewer | `reviewer` | Review code quality |
+| general delegate | `delegate` | Lightweight delegation |
+
+> **Note**: The `subagent-driven-development` and `dispatching-parallel-agents` skill prompt templates have been updated to use the `subagent` tool.
 
 ---
 
@@ -217,7 +223,6 @@ pi --no-session --print \
 | Extension File | Purpose |
 |---------------|---------|
 | `extensions/bootstrap.ts` | Injects `using-superpowers` rules into the system prompt before the first message of each session |
-| `extensions/subagent.ts` | Registers the `dispatch_agent` tool as a replacement for Claude Code's `Task` sub-agent |
 
 `bootstrap.ts` injection flow:
 
@@ -246,7 +251,7 @@ Injected content includes:
 
 | Limitation | Impact | Mitigation |
 |-----------|--------|-----------|
-| No built-in sub-agents (`Task` tool unavailable) | `subagent-driven-development` cannot truly run in parallel | **Resolved via `dispatch_agent` tool**: `extensions/subagent.ts` achieves context isolation through `pi --no-session --print` subprocess; fallback: sequential execution mode |
+| No built-in sub-agents (`Task` tool unavailable) | `subagent-driven-development` cannot truly run in parallel | Use [pi-subagents](https://github.com/nicobailon/pi-subagents) for Chain/Parallel/Clarify UI orchestration; fallback: sequential execution mode |
 | No `TodoWrite` tool | Task progress cannot be shown in native UI | Track with `TODO.md` file — functionally equivalent |
 | `before_agent_start` fires on every turn | Need to detect whether injection has already occurred | Bootstrap extension uses session ID + turn count for double detection |
 | Flowcharts in `using-superpowers` require Graphviz | Dot syntax code blocks cannot render in Pi TUI | Diagrams still serve as text-based logic references; no functional impact |

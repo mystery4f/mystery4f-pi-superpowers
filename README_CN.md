@@ -9,7 +9,7 @@
 - 🇨🇳 **中文触发词**：每个技能均支持中英双语触发，中文提问自动匹配对应技能
 - 🔌 **Bootstrap 扩展**：每次会话启动时自动将技能使用规则注入上下文
 - 🔧 **工具映射**：自动将原 Claude Code 工具（`Skill`、`TodoWrite`、`Task`）映射到 Pi 等价操作
-- 🤖 **`dispatch_agent` 工具**：模拟 Claude Code 的 `Task` 子代理，通过 `pi --no-session --print` 子进程实现上下文隔离
+- 🤖 **子代理派发**：集成 [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) 提供 Chain、Parallel、Clarify UI 等完整子代理编排能力
 - ⚡ **提示模板**：3个斜杠命令（`/brainstorm`等）
 
 ---
@@ -20,7 +20,7 @@
 - [典型工作流](#典型工作流)
 - [提示模板命令](#提示模板命令)
 - [工具映射参考](#工具映射参考)
-- [dispatch_agent 工具](#dispatch_agent-工具)
+
 - [Bootstrap 注入机制](#bootstrap-注入机制)
 - [已知限制](#已知限制)
 - [安装](#安装)
@@ -143,7 +143,7 @@ Pi 的工具名称与原 Claude Code 存在差异，Bootstrap 扩展会将以下
 |--------------------|--------------|
 | `Skill` tool | `read` 工具读取 `skills/<name>/SKILL.md`，或使用 `/skill:<name>` 命令 |
 | `TodoWrite` | `write`/`edit` 工具操作项目根目录的 `TODO.md`（Markdown 复选框格式） |
-| `Task`（子代理派发）| **方案 A（降级）顺序执行模式**：在当前对话中逐任务实现，每任务后切换角色审查；**方案 B（推荐）`dispatch_agent` 工具**：通过 `pi --no-session --print` 子进程实现真正的上下文隔离（见下方说明） |
+| `Task`（子代理派发）| 使用 [pi-subagents](https://github.com/nicobailon/pi-subagents) 的 `subagent` 工具，支持单代理、并行、流水线等多种模式 |
 | `Read` | `read`（同名，直接使用）|
 | `Write` | `write`（同名，直接使用）|
 | `Edit` | `edit`（同名，直接使用）|
@@ -173,38 +173,44 @@ Pi 的工具名称与原 Claude Code 存在差异，Bootstrap 扩展会将以下
 
 ---
 
-## dispatch_agent 工具
+## pi-subagents 集成
 
-#### 方案 B：`dispatch_agent` 工具（推荐，需要 `pi` 在 PATH 中）
+pi-superpowers 与 [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) 集成，提供完整的子代理编排能力。
 
-`dispatch_agent` 是 pi-superpowers 注册的自定义工具（`extensions/subagent.ts`），通过启动 `pi --no-session --print` 子进程实现真正的上下文隔离，与 Claude Code 的 `Task` 工具行为一致。
+**安装 pi-subagents：**
+```bash
+pi install npm:pi-subagents
+```
 
 **LLM 调用示例：**
-```
-dispatch_agent({
-  task: "实现用户认证中间件，要求：1) 验证 JWT 2) 处理过期 3) 写单元测试",
-  role: "implementer"
-})
-```
+```typescript
+// 单代理
+subagent({ agent: "worker", task: "实现用户认证中间件..." })
 
-**支持的角色（`role` 参数）：**
+// 流水线：实现 → 审查 → 修复
+subagent({ chain: [
+  { agent: "worker", task: "实现 JWT 认证" },
+  { agent: "reviewer", task: "审查 spec 合规性" },
+  { agent: "worker", task: "修复审查发现的问题" }
+]})
 
-| 角色 | 说明 |
-|------|------|
-| `implementer` | 实现任务、编写测试、自我审查 |
-| `spec-reviewer` | 独立验证实现是否符合规格（批判性视角） |
-| `code-quality-reviewer` | 审查代码质量，仅在 Spec 审查通过后运行 |
-| _(省略)_ | 无角色限制的通用子代理 |
-
-**底层实现：**
-```bash
-# role = "implementer" 时等价于：
-pi --no-session --print \
-   --append-system-prompt "You are a implementer." \
-   "实现用户认证中间件，要求：..."
+// 并行审查
+subagent({ tasks: [
+  { agent: "reviewer", task: "审查 spec 合规性" },
+  { agent: "reviewer", task: "审查代码质量" }
+], concurrency: 2 })
 ```
 
-**先决条件**：`pi` 二进制需在 `$PATH` 中可访问。若未找到，工具返回清晰的错误信息而不会崩溃。
+**常用角色映射：**
+
+| 原 superpowers 角色 | pi-subagents 内置 agent | 用法 |
+|------|------|------|
+| implementer | `worker` | 实现代码、编写测试 |
+| spec-reviewer | `reviewer` | 审查 spec 合规性 |
+| code-quality-reviewer | `reviewer` | 审查代码质量 |
+| 通用子代理 | `delegate` | 轻量级委托 |
+
+> **注意**：`subagent-driven-development` 和 `dispatching-parallel-agents` 技能的提示模板已更新为使用 `subagent` 工具。
 
 ---
 
@@ -217,7 +223,6 @@ pi --no-session --print \
 | 扩展文件 | 作用 |
 |---------|------|
 | `extensions/bootstrap.ts` | 每次会话第一条消息前，将 `using-superpowers` 规则注入系统提示 |
-| `extensions/subagent.ts` | 注册 `dispatch_agent` 工具，替代 Claude Code 的 `Task` 子代理 |
 
 `bootstrap.ts` 的注入流程：
 
@@ -246,7 +251,7 @@ AI 在本次响应中遵循 using-superpowers 规则
 
 | 限制 | 影响 | 缓解措施 |
 |------|------|---------|
-| 无内置子代理（`Task` 工具不可用） | `subagent-driven-development` 无法真正并行执行 | **已通过 `dispatch_agent` 工具解决**：`extensions/subagent.ts` 通过 `pi --no-session --print` 子进程实现上下文隔离；降级方案：顺序执行模式 |
+| 无内置子代理（`Task` 工具不可用） | `subagent-driven-development` 无法真正并行执行 | **使用 [pi-subagents](https://github.com/nicobailon/pi-subagents)** 提供 Chain/Parallel/Clarify UI 等完整子代理编排能力；降级方案：顺序执行模式 |
 | 无 `TodoWrite` 工具 | 任务进度无法用原生 UI 显示 | 用 `TODO.md` 文件追踪，功能等价 |
 | `before_agent_start` 每次都触发 | 需要检测是否已注入 | Bootstrap 扩展用 session ID + turn 计数双重检测 |
 | `using-superpowers` 中的流程图依赖 Graphviz | Dot 语法代码块无法在 Pi TUI 中渲染 | 图表仍可作为文字逻辑参考，不影响功能 |
