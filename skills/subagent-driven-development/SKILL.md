@@ -271,11 +271,11 @@ Done!
 
 使用 `pi-subagents` 扩展（nicobailon/pi-subagents）的 `subagent` 工具替代 `Task`：
 
-- **派发实现者** → `subagent({ agent: "worker", task: "..." })`
-- **派发 spec reviewer** → `subagent({ agent: "reviewer", task: "审查 spec: ..." })`
-- **派发 code quality reviewer** → `subagent({ agent: "reviewer", task: "审查代码质量: ..." })`
+- **派发实现者** → `subagent({ agent: "superpowers-worker", task: "..." })`
+- **派发 spec reviewer** → `subagent({ agent: "superpowers-reviewer", task: "审查 spec: ..." })`
+- **派发 code quality reviewer** → `subagent({ agent: "superpowers-reviewer", task: "审查代码质量: ..." })`
 - **并行派发** → `subagent({ tasks: [{ agent: "...", task: "..." }, ...] })`
-- **流水线** → `subagent({ chain: [{ agent: "worker", ... }, { agent: "reviewer", ... }] })`
+- **流水线** → `subagent({ chain: [{ agent: "superpowers-worker", ... }, { agent: "superpowers-reviewer", ... }] })`
 
 推荐使用 Chain 模式串联 实现→审查→修复 流程，或 Parallel 模式并发审查多个维度。
 详见 [[pi-subagents-对比-nicobailon-vs-gotgenes|pi-subagents 对比]]。

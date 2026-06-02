@@ -205,9 +205,9 @@ subagent({ tasks: [
 
 | 原 superpowers 角色 | pi-subagents 内置 agent | 用法 |
 |------|------|------|
-| implementer | `worker` | 实现代码、编写测试 |
-| spec-reviewer | `reviewer` | 审查 spec 合规性 |
-| code-quality-reviewer | `reviewer` | 审查代码质量 |
+| implementer | `superpowers-worker` | 实现代码、编写测试 |
+| spec-reviewer | `superpowers-reviewer` | 审查 spec 合规性 |
+| code-quality-reviewer | `superpowers-reviewer` | 审查代码质量 |
 | 通用子代理 | `delegate` | 轻量级委托 |
 
 > **注意**：`subagent-driven-development` 和 `dispatching-parallel-agents` 技能的提示模板已更新为使用 `subagent` 工具。

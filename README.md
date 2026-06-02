@@ -205,9 +205,9 @@ subagent({ tasks: [
 
 | Original superpowers role | pi-subagents builtin agent | Usage |
 |------|------|------|
-| implementer | `worker` | Implement code, write tests |
-| spec-reviewer | `reviewer` | Review spec compliance |
-| code-quality-reviewer | `reviewer` | Review code quality |
+| implementer | `superpowers-worker` | Implement code, write tests |
+| spec-reviewer | `superpowers-reviewer` | Review spec compliance |
+| code-quality-reviewer | `superpowers-reviewer` | Review code quality |
 | general delegate | `delegate` | Lightweight delegation |
 
 > **Note**: The `subagent-driven-development` and `dispatching-parallel-agents` skill prompt templates have been updated to use the `subagent` tool.
