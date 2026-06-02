@@ -58,7 +58,13 @@ export default function (pi: ExtensionAPI) {
       });
 
       try {
-        const result = await pi.exec("pi", args, {
+        // Windows: spawn("pi", ...) with shell:false can't resolve .cmd files.
+        // Wrap via cmd.exe /d /c as a portable workaround.
+        const isWindows = process.platform === "win32";
+        const execCommand = isWindows ? "cmd.exe" : "pi";
+        const execArgs = isWindows ? ["/d", "/c", "pi", ...args] : args;
+
+        const result = await pi.exec(execCommand, execArgs, {
           signal,
           timeout: SUBAGENT_TIMEOUT_MS,
         });

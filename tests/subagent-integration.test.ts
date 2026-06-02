@@ -72,6 +72,17 @@ describe("subagent.ts file", () => {
     );
     expect(content).toContain("ENOENT");
   });
+
+  it("subagent.ts wraps pi via cmd.exe /d /c on Windows", () => {
+    const content = fs.readFileSync(
+      path.join(ROOT, "extensions", "subagent.ts"),
+      "utf8"
+    );
+    expect(content).toContain('process.platform === "win32"');
+    expect(content).toContain("cmd.exe");
+    expect(content).toContain('"/d"');
+    expect(content).toContain('"/c"');
+  });
 });
 
 describe("package.json pi.extensions registration", () => {
