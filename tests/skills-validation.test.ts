@@ -163,11 +163,11 @@ describe("subagent-driven-development: Pi sequential mode", () => {
     expect(content).toMatch(/Pi 平台适配|Pi Platform Adaptation/);
   });
 
-  it("SKILL.md explains sequential execution as Task tool alternative", () => {
+  it("SKILL.md explains pi-subagents integration as Task tool alternative", () => {
     const content = fs.readFileSync(
       path.join(SKILLS_DIR, "subagent-driven-development", "SKILL.md"),
       "utf8"
     );
-    expect(content).toMatch(/顺序执行|sequential/i);
+    expect(content).toMatch(/pi-subagents|subagent\(/i);
   });
 });

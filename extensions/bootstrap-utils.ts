@@ -33,7 +33,7 @@ export function buildPiToolMapping(skillsDir: string): string {
 |---------------|--------------|
 | \`Skill\` 工具 | 使用 \`read\` 工具读取技能文件（路径：\`${skillsDir}/<skill-name>/SKILL.md\`），或在编辑器输入 \`/skill:<name>\` 命令 |
 | \`TodoWrite\` | 使用 \`write\`/\`edit\` 工具操作项目根目录的 \`TODO.md\` 文件，用 Markdown 复选框格式记录任务 |
-| \`Task\`（子代理派发）| Pi 暂无内置子代理。使用顺序执行模式：在当前对话中逐任务实现，每任务完成后进行审查再继续 |
+| \`Task\`（子代理派发）| 使用 \`subagent\` 工具（来自 pi-subagents 扩展）。支持单代理 \`subagent({ agent: "worker", task: "..." })\`、流水线 \`subagent({ chain: [...] })\`、并行 \`subagent({ tasks: [...] })\` 等模式。详见 `subagent-driven-development` 技能。 |
 | \`Read\` | \`read\` 工具（同名，直接使用）|
 | \`Write\` | \`write\` 工具（同名，直接使用）|
 | \`Edit\` | \`edit\` 工具（同名，直接使用）|
