@@ -42,7 +42,50 @@ digraph when_to_use {
 - Two-stage review after each task: spec compliance first, then code quality
 - Faster iteration (no human-in-loop between tasks)
 
+## Task Parallelization
+
+**Before starting execution, analyze all tasks for parallelism opportunities:**
+
+1. **If tasks edit completely different files** (no overlapping paths) → they are safely parallelizable
+2. **If tasks edit the same file but different sections** → may be parallelizable with care; prefer sequential
+3. **If tasks share dependencies or state** → must be sequential
+
+**For safely parallelizable tasks**, dispatch them concurrently using `subagent({ tasks: [...] })` to save time. Each parallel task still goes through the same implement→spec-review→code-review cycle independently.
+
+**Example:**
+```
+// Tasks 1-3 all touch different files → safe to parallelize
+subagent({ tasks: [
+  { agent: "superpowers-worker", task: "<Task 1: auth module, files: src/auth/*>" },
+  { agent: "superpowers-worker", task: "<Task 2: payment module, files: src/payment/*>" },
+  { agent: "superpowers-worker", task: "<Task 3: notification module, files: src/notify/*>" },
+], concurrency: 3 })
+// Then review each result independently
+```
+
 ## The Process
+
+### Phase 0: Analyze and Group
+
+1. Read the plan file once
+2. Extract all tasks with full text and context
+3. **Analyze task dependencies** — which tasks touch which files?
+   - Tasks touching **completely different files** → independent, can run in parallel
+   - Tasks touching **same files** → dependent, must run sequentially
+4. **Group independent tasks** into parallel batches using `superpowers:dispatching-parallel-agents`
+5. Create TodoWrite with all tasks
+
+### Phase 1-N: Execute Each Task (or Parallel Batch)
+
+For independent task batches, dispatch in parallel:
+```
+subagent({ tasks: [
+  { agent: "superpowers-worker", task: "<Task A: files in src/module-a/>" },
+  { agent: "superpowers-worker", task: "<Task B: files in src/module-b/>" },
+], concurrency: 3 })
+```
+
+Each task (whether parallel or sequential) follows the per-task cycle below:
 
 ```dot
 digraph process {
@@ -242,7 +285,6 @@ Done!
 - Start implementation on main/master branch without explicit user consent
 - Skip reviews (spec compliance OR code quality)
 - Proceed with unfixed issues
-- Dispatch multiple implementation subagents in parallel (conflicts)
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context (subagent needs to understand where task fits)
 - Ignore subagent questions (answer before letting them proceed)

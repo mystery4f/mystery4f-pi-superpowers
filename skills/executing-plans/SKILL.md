@@ -27,7 +27,13 @@ Load plan, review critically, execute all tasks, report when complete.
 
 ### Step 2: Execute Tasks
 
-For each task:
+Before executing, analyze task dependencies:
+- **Independent tasks** (different files/subsystems, no shared state) → group into parallel batches
+- **Dependent tasks** → execute sequentially in dependency order
+
+For parallel batches, use `superpowers:dispatching-parallel-agents` to dispatch concurrently. See that skill for the dispatch pattern.
+
+For each sequential task:
 1. Mark as in_progress
 2. Follow each step exactly (plan has bite-sized steps)
 3. Run verifications as specified

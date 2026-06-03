@@ -17,6 +17,8 @@ When you have multiple unrelated failures (different test files, different subsy
 
 **Core principle:** Dispatch one agent per independent problem domain. Let them work concurrently.
 
+**When you are already in a subagent workflow** (e.g. `subagent-driven-development`), proactively identify independent tasks and parallelize them using this skill. Do not default to sequential execution — analyze dependencies first, then parallelize what can be parallelized.
+
 ## When to Use
 
 ```dot
