@@ -148,6 +148,196 @@ digraph process {
 }
 ```
 
+## 编排模式（Orchestration Patterns）
+
+pi-subagents 支持 6 种编排模式，根据任务规模和复杂度选择：
+
+### 模式 1：单 Agent — 简单任务
+
+最基础的用法，一个 worker 实现、一个 reviewer 审查：
+
+```typescript
+// 实现
+subagent({ agent: "superpowers-worker", task: "实现 Task 1: 添加登录表单" })
+
+// 审查
+subagent({ agent: "superpowers-reviewer", task: "审查 Task 1 的实现" })
+```
+
+**适用**：单个简单任务，无并行需求。
+
+### 模式 2：顶层 Parallel — 多个独立任务并发
+
+分析依赖后，把操作不同文件的任务并行派发：
+
+```typescript
+subagent({ tasks: [
+  { agent: "superpowers-worker", task: "Task 1: auth 模块 (src/auth/)" },
+  { agent: "superpowers-worker", task: "Task 2: payment 模块 (src/payment/)" },
+  { agent: "superpowers-worker", task: "Task 3: notify 模块 (src/notify/)" },
+], concurrency: 3 })
+```
+
+每个 task 还可以**多次派发同一个 agent**：
+
+```typescript
+subagent({ tasks: [
+  { agent: "superpowers-reviewer", task: "审查 auth 模块的 spec 合规性", count: 2 },
+] })
+// 2 个 reviewer 各自审同一个模块，互不干扰
+```
+
+**适用**：3+ 个完全独立的文件改动，没有共享状态。
+
+### 模式 3：Chain — 串行流水线
+
+侦察 → 规划 → 实现 → 审查，一步步传下去：
+
+```typescript
+subagent({ chain: [
+  { agent: "scout", task: "扫描认证模块 → context.md" },
+  { agent: "planner", task: "基于 {previous} 写实现计划 → plan.md" },
+  { agent: "superpowers-worker", task: "执行计划" },
+  { agent: "superpowers-reviewer", task: "审查最终实现" },
+] })
+```
+
+上一步输出通过 `{previous}` 传给下一步。也可以用 `as: "name"` 给步骤命名，后续用 `{outputs.name}` 精确引用。
+
+**适用**：有明确先后顺序的多步骤流程。
+
+### 模式 4：Chain + Parallel — 混合流水线
+
+效果最好的模式。准备阶段串行，审查阶段并行，修复阶段串行：
+
+```typescript
+subagent({ chain: [
+  // Step 1: 单 agent 准备上下文
+  { agent: "context-builder", task: `
+    分析当前任务涉及的代码，生成：
+    - context.md（相关文件/模式/约束/风险）
+    - meta-prompt.md（给 worker 的即用提示）
+  ` },
+
+  // Step 2: 2 个 reviewer 并行审查（互不等待，节省约 50% 时间）
+  { parallel: [
+    { agent: "superpowers-reviewer", task: "spec 合规性审查（对照需求逐项核对）" },
+    { agent: "superpowers-reviewer", task: "代码质量审查（clean code/测试/异常处理）" },
+  ], concurrency: 2 },
+
+  // Step 3: 单 agent 汇总修复
+  { agent: "superpowers-worker", task: `
+    合并两份审查报告（{previous}）：
+    1. 去重 → 分类（Critical / Important / Minor）
+    2. 自动修复可确认的问题
+    3. 标记需人工决策的问题
+    4. 输出 SUMMARY.md
+  ` },
+] })
+```
+
+**适用**：中大型任务，需要高质量审查 + 自动修复闭环。这是推荐的默认模式。
+
+### 模式 5：Dynamic Fanout — 动态并行
+
+先让一个 agent 输出结构化结果，再**自动拆 N 路**并行：
+
+```typescript
+subagent({ chain: [
+  // 第一步：scout 找出所有需要审查的文件
+  { agent: "scout", task: `
+    扫描项目，找出所有需要审查的源文件。
+    返回 { items: [{ path: "src/auth/login.ts", reason: "新增文件" }, ...] }
+  `, as: "targets", outputSchema: { type: "object" } },
+
+  // 第二步：按结果动态展开 — 每个文件一个 reviewer
+  { expand: {
+    from: { output: "targets", path: "/items" },
+    item: "target", key: "/path",
+    maxItems: 12
+  },
+    parallel: {
+      agent: "superpowers-reviewer",
+      task: "审查 {target.path}（原因: {target.reason}）"
+    },
+    collect: { as: "reviews" },
+    concurrency: 4 },
+
+  // 第三步：汇总修复
+  { agent: "superpowers-worker", task: "合并 {outputs.reviews} 中的所有审查结果，自动修复后输出 SUMMARY.md" },
+] })
+```
+
+**效果**：scout 找到 12 个文件 → 自动 12 路 reviewer → 4 并发分批跑 → 汇总。不用手写 Parallel 列表。
+
+**适用**：大型项目，检查范围不确定，需要动态生成并行任务。
+
+### 模式 6：三阶段编排（Staged Fix） — 大批量安全修改
+
+最安全的模式：只读规划（并行）→ 单写线程（串行）→ 只读验证（并行）：
+
+```
+Phase 1 (只读规划)         Phase 2 (单写线程)     Phase 3 (只读验证)
+  ┌─ reviewer ─┐              ┌─ worker ─┐          ┌─ reviewer ─┐
+  │ Plan fix A  │              │  单线程    │          │ 验证 fix A  │
+  ├─ reviewer ─┤      →       │  写所有    │    →     ├─ reviewer ─┤
+  │ Plan fix B  │    (并行 3)  │  accepted  │          │ 验证 fix B  │
+  ├─ reviewer ─┤              │  fixes    │          ├─ reviewer ─┤
+  │ Plan fix C  │              └───────────┘          │ 验证 fix C  │
+  └─────────────┘                                     └─────────────┘
+                                                          (并行 3)
+```
+
+```typescript
+subagent({ async: true, context: "fresh", chain: [
+  // Phase 1: 并行只读规划（不碰文件）
+  { parallel: [
+    { agent: "superpowers-reviewer", as: "planA", task: `
+      审查 auth 模块的问题，给出修复计划（只读，不修改文件）。
+      输出修复目标文件列表 + 具体改动方案。
+    `, output: "plans/auth.md", outputMode: "file-only" },
+    { agent: "superpowers-reviewer", as: "planB", task: `
+      审查 payment 模块的问题，给出修复计划（只读，不修改文件）。
+    `, output: "plans/payment.md", outputMode: "file-only" },
+    { agent: "superpowers-reviewer", as: "planC", task: `
+      审查 notify 模块的问题，给出修复计划（只读，不修改文件）。
+    `, output: "plans/notify.md", outputMode: "file-only" },
+  ], concurrency: 3 },
+
+  // Phase 2: 单写线程（唯一允许编辑的 agent）
+  { agent: "superpowers-worker", task: `
+    你是唯一的写入线程。
+    Auth 计划: {outputs.planA}
+    Payment 计划: {outputs.planB}
+    Notify 计划: {outputs.planC}
+
+    只应用 accepted 的修复。完成后跑验证命令。
+    报告改动文件、运行命令和退出码、遗留问题。
+  `, output: "worker/fixes.md", outputMode: "file-only", progress: true },
+
+  // Phase 3: 并行只读验证
+  { parallel: [
+    { agent: "superpowers-reviewer", task: "验证 auth + payment 修复（从 {outputs.planA} 和 {outputs.planB} 检查 diff）" },
+    { agent: "superpowers-reviewer", task: "验证 notify 修复（从 {outputs.planC} 检查 diff）" },
+  ], concurrency: 2 },
+] })
+```
+
+**适用**：大批量跨模块修改、重构、多文件审查后统一修复。避免多个 worker 同时写同一个工作区导致冲突。
+
+### 模式选择速查
+
+| 场景 | 推荐模式 |
+|------|----------|
+| 单个简单任务 | 模式 1：单 Agent |
+| 3+ 个不相关的文件改动 | 模式 2：顶层 Parallel |
+| 有明确前后依赖的流程 | 模式 3：Chain |
+| 中大型任务需审查+修复 | **模式 4：Chain+Parallel（推荐）** |
+| 检查范围不确定的大型项目 | 模式 5：Dynamic Fanout |
+| 大批量跨模块安全修改 | 模式 6：三阶段编排 |
+
+---
+
 ## Model Selection
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
