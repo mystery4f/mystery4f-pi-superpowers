@@ -2,6 +2,10 @@
 
 Use this template when dispatching an implementer subagent.
 
+**选择 agent：**
+- `superpowers-worker`（flash）: 简单/机械任务
+- `superpowers-worker-pro`（pro）: 复杂/跨模块任务
+
 ```
 subagent({ agent: "superpowers-worker", task: `
   Implement Task N: [task name]

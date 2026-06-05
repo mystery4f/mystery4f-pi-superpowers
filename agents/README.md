@@ -8,9 +8,10 @@ Pi v0.78+ 已内置 subagent 基础设施（`@gotgenes/pi-subagents`），这里
 
 | Agent | 用途 | 模型 |
 |-------|------|------|
-| `superpowers-worker` | 按计划实现任务，遵循 TDD | 建议用强模型 |
-| `superpowers-reviewer` | 多角色审查（spec + 代码质量 + 计划验证） | 建议用强模型 |
-| `superpowers-spec-reviewer` | 纯 spec 合规审查（精简版） | 可用弱模型 |
+| `superpowers-worker` | 普通任务（CRUD、加字段、改配置） | deepseek-v4-flash |
+| `superpowers-worker-pro` | 复杂任务（跨模块、重构、异常处理） | deepseek-v4-pro |
+| `superpowers-reviewer` | 多角色审查（spec + 代码质量 + 计划验证） | deepseek-v4-pro |
+| `superpowers-spec-reviewer` | 纯 spec 合规审查（精简版） | deepseek-v4-flash |
 
 ## 安装
 

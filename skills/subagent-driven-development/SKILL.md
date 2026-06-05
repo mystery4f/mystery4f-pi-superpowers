@@ -342,16 +342,18 @@ subagent({ async: true, context: "fresh", chain: [
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
-**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
+**Implementation tasks** — use the right worker for the job:
+- `superpowers-worker`（flash）: 机械任务（1-3 文件、CRUD、改配置、简单函数）
+- `superpowers-worker-pro`（pro）: 复杂任务（5+ 文件、跨模块、重构、异常处理多）
+- 如果不确定 → 先用 `superpowers-worker`，BLOCKED 时升级到 `superpowers-worker-pro`
 
-**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
-
-**Architecture, design, and review tasks**: use the most capable available model.
+**Review tasks**: `superpowers-reviewer`（pro）统一处理 spec + 代码质量审查。
+**Light review**: `superpowers-spec-reviewer`（flash）用于简单 spec 合规检查。
 
 **Task complexity signals:**
-- Touches 1-2 files with a complete spec → cheap model
-- Touches multiple files with integration concerns → standard model
-- Requires design judgment or broad codebase understanding → most capable model
+- Touches 1-3 files with a complete spec → `superpowers-worker`
+- Touches 5+ files with integration concerns → `superpowers-worker-pro`
+- Requires design judgment or broad codebase understanding → `superpowers-worker-pro`
 
 ## Handling Implementer Status
 
