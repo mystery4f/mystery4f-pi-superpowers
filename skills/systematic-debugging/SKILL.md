@@ -73,7 +73,25 @@ You MUST complete each phase before proceeding to the next.
    - New dependencies, config changes
    - Environmental differences
 
-4. **Gather Evidence in Multi-Component Systems**
+4. **Scout for Context（大型/陌生代码库优先）**
+
+   如果代码库较大或不熟悉，**在深入读代码前先派 `scout` agent 快速侦查**：
+
+   ```typescript
+   subagent({ agent: "scout", task: "
+     扫描与 [错误描述] 相关的代码：
+     - 找到错误涉及的调用链（从入口到出错点）
+     - 标记关键类型、接口、数据流
+     - 列出最近修改过的相关文件
+     - 指出可能的根因方向（不改代码）
+     - 输出到 context.md
+   " })
+   ```
+
+   scout 跑完后，用它的 `context.md` 作为 Phase 1 后续步骤的地图。
+   如果代码库很小或已经熟悉，可跳过此步。
+
+5. **Gather Evidence in Multi-Component Systems**
 
    **WHEN system has multiple components (CI → build → signing, API → service → database):**
 
@@ -111,7 +129,7 @@ You MUST complete each phase before proceeding to the next.
 
    **This reveals:** Which layer fails (secrets → workflow ✓, workflow → build ✗)
 
-5. **Trace Data Flow**
+6. **Trace Data Flow**
 
    **WHEN error is deep in call stack:**
 

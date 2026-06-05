@@ -74,6 +74,22 @@ subagent({ tasks: [
    - Tasks touching **same files** → dependent, must run sequentially
 4. **Group independent tasks** into parallel batches using `superpowers:dispatching-parallel-agents`
 5. Create TodoWrite with all tasks
+6. **Build context for worker（推荐）** — 派 `context-builder` 生成 worker 专用上下文和 meta-prompt，避免主会话手动翻文件：
+
+   ```typescript
+   subagent({ agent: "context-builder", task: `
+     分析当前代码库中与以下任务相关的代码：
+     [任务描述]
+     
+     产出 context.md（相关文件/模式/约束/风险）和 meta-prompt.md（
+     目标、上下文、成功标准、硬约束、验证方式、停止规则）。
+     meta-prompt 是给 worker agent 用的即用提示。
+   ` })
+   ```
+
+   拿到 context.md 和 meta-prompt.md 后，派发 worker 时直接把这些内容塞进 task 里，
+   不用让 worker 自己去读文件。对于复杂任务、大型代码库尤其有用。
+   简单任务可跳过此步。
 
 ### Phase 1-N: Execute Each Task (or Parallel Batch)
 
@@ -157,11 +173,25 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 **NEEDS_CONTEXT:** The implementer needs information that wasn't provided. Provide the missing context and re-dispatch.
 
-**BLOCKED:** The implementer cannot complete the task. Assess the blocker:
-1. If it's a context problem, provide more context and re-dispatch with the same model
-2. If the task requires more reasoning, re-dispatch with a more capable model
-3. If the task is too large, break it into smaller pieces
-4. If the plan itself is wrong, escalate to the human
+**BLOCKED:** The implementer cannot complete the task. **不要自己硬扛判断原因**——先派 `oracle` agent 诊断：
+
+```typescript
+subagent({ agent: "oracle", task: `
+  Worker 在实现 Task [N] 时卡住了，报告如下：
+  [worker 的 BLOCKED 报告原文]
+  
+  请诊断：
+  1. 根因是什么（上下文不足 / 需要更强模型 / 任务太大 / 计划本身有问题）？
+  2. 推荐下一步（重派 + 补上下文 / 升级模型 / 拆分任务 / 找用户修改计划）？
+  3. 如果推荐重派，给出一个改进后的 worker prompt。
+` })
+```
+
+oracle 给出诊断和推荐后，按推荐路径执行：
+1. 如果是上下文问题 → 按 oracle 的建议补充上下文，重新派发
+2. 如果需要更强模型 → 用 oracle 推荐的模型 + prompt 重新派发
+3. 如果任务太大 → 按 oracle 建议拆分成小任务
+4. 如果计划本身有问题 → 带着 oracle 的分析找用户讨论
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
 
@@ -320,7 +350,7 @@ Done!
 - **流水线** → `subagent({ chain: [{ agent: "superpowers-worker", ... }, { agent: "superpowers-reviewer", ... }] })`
 
 推荐使用 Chain 模式串联 实现→审查→修复 流程，或 Parallel 模式并发审查多个维度。
-详见 [[pi-subagents-对比-nicobailon-vs-gotgenes|pi-subagents 对比]]。
+详见 `pi-subagents` 技能说明。
 
 ## Integration
 

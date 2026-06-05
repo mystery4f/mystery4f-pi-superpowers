@@ -25,7 +25,9 @@
     "extensions/**/*.ts",
     "skills/**/*.md",
     "prompts/**/*.md",
+    "agents/**/*.md",
     "README.md",
+    "README_CN.md",
     "INSTALL.md",
     "package.json"
   ],
@@ -53,5 +55,8 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": ">=0.75.0"
+  },
+  "engines": {
+    "pi": ">=0.78.0"
   }
 }

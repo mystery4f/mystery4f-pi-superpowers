@@ -9,7 +9,7 @@
 - 🇨🇳 **Chinese trigger words**: Every skill supports bilingual (Chinese/English) triggers — Chinese queries automatically match the corresponding skill
 - 🔌 **Bootstrap extension**: Skill usage rules are automatically injected into context at the start of every session
 - 🔧 **Tool mapping**: Automatically maps original Claude Code tools (`Skill`, `TodoWrite`, `Task`) to Pi equivalents
-- 🤖 **Subagent dispatch**: Integrates [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) for full subagent orchestration (Chain, Parallel, Clarify UI)
+- 🤖 **Subagent dispatch**: Uses Pi v0.78+ built-in subagent capabilities (Chain, Parallel, Async — full orchestration)
 - ⚡ **Prompt templates**: 3 slash commands (`/brainstorm`, etc.)
 
 ---
@@ -143,7 +143,7 @@ Pi tool names differ from Claude Code's originals. The Bootstrap extension injec
 |--------------------------|---------------|
 | `Skill` tool | Use `read` to load `skills/<name>/SKILL.md`, or use the `/skill:<name>` command |
 | `TodoWrite` | Use `write`/`edit` to manage `TODO.md` at the project root (Markdown checkbox format) |
-| `Task` (sub-agent dispatch) | Use [pi-subagents](https://github.com/nicobailon/pi-subagents)'s `subagent` tool, supporting single agent, parallel, chain, and more |
+| `Task` (sub-agent dispatch) | Use the `subagent` tool (built into Pi v0.78+), supporting single agent, parallel, chain, background, and more |
 | `Read` | `read` (same name, use directly) |
 | `Write` | `write` (same name, use directly) |
 | `Edit` | `edit` (same name, use directly) |
@@ -173,44 +173,44 @@ Task status is tracked in a `TODO.md` file:
 
 ---
 
-## pi-subagents Integration
+## Subagent Integration
 
-pi-superpowers integrates with [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) for full subagent orchestration.
+Pi v0.78+ includes **built-in** subagent support — no extra installation required. pi-superpowers uses the built-in `subagent` tool for all sub-agent dispatch.
 
-**Install pi-subagents:**
-```bash
-pi install npm:pi-subagents
-```
+> Subagent infrastructure is built into Pi. It supports Chain, Parallel, Async, background runs, Worktree isolation, Intercom coordination, Acceptance Gates, and more.
 
 **LLM call examples:**
 ```typescript
 // Single agent
-subagent({ agent: "worker", task: "Implement user auth middleware..." })
+subagent({ agent: "superpowers-worker", task: "Implement user auth middleware..." })
 
 // Chain: implement → review → fix
 subagent({ chain: [
-  { agent: "worker", task: "Implement JWT auth" },
-  { agent: "reviewer", task: "Review spec compliance" },
-  { agent: "worker", task: "Fix review findings" }
+  { agent: "superpowers-worker", task: "Implement JWT auth" },
+  { agent: "superpowers-reviewer", task: "Review spec compliance" },
+  { agent: "superpowers-worker", task: "Fix review findings" }
 ]})
 
 // Parallel review
 subagent({ tasks: [
-  { agent: "reviewer", task: "Review spec compliance" },
-  { agent: "reviewer", task: "Review code quality" }
+  { agent: "superpowers-reviewer", task: "Review spec compliance" },
+  { agent: "superpowers-reviewer", task: "Review code quality" }
 ], concurrency: 2 })
 ```
 
 **Role mapping:**
 
-| Original superpowers role | pi-subagents builtin agent | Usage |
+| Original superpowers role | Agent used | Usage |
 |------|------|------|
 | implementer | `superpowers-worker` | Implement code, write tests |
-| spec-reviewer | `superpowers-reviewer` | Review spec compliance |
+| spec-reviewer | `superpowers-reviewer` or `superpowers-spec-reviewer` | Review spec compliance |
 | code-quality-reviewer | `superpowers-reviewer` | Review code quality |
-| general delegate | `delegate` | Lightweight delegation |
+| decision diagnosis | `oracle` | Diagnose BLOCKED state, recommend next step |
+| code recon | `scout` | Quick scan of large/unfamiliar codebases |
+| external research | `researcher` | Research tech choices and best practices |
+| context building | `context-builder` | Generate worker-ready context |
 
-> **Note**: The `subagent-driven-development` and `dispatching-parallel-agents` skill prompt templates have been updated to use the `subagent` tool.
+> **Note**: Custom agents prefixed with `superpowers-*` must be defined as `.md` files in `~/.pi/agent/agents/` (see the `agents/` directory in this repo for templates). `oracle`, `scout`, `researcher`, and `context-builder` are Pi built-in agents.
 
 ---
 
@@ -251,10 +251,33 @@ Injected content includes:
 
 | Limitation | Impact | Mitigation |
 |-----------|--------|-----------|
-| No built-in sub-agents (`Task` tool unavailable) | `subagent-driven-development` cannot truly run in parallel | Use [pi-subagents](https://github.com/nicobailon/pi-subagents) for Chain/Parallel/Clarify UI orchestration; fallback: sequential execution mode |
+| Custom sub-agents require manual setup | `superpowers-worker` / `superpowers-reviewer` and similar custom agents must be defined in `~/.pi/agent/agents/` before use | Copy the templates from this repo's `agents/` directory; built-in agents (`scout`, `oracle`, `researcher`, `context-builder`) work out of the box |
 | No `TodoWrite` tool | Task progress cannot be shown in native UI | Track with `TODO.md` file — functionally equivalent |
 | `before_agent_start` fires on every turn | Need to detect whether injection has already occurred | Bootstrap extension uses session ID + turn count for double detection |
 | Flowcharts in `using-superpowers` require Graphviz | Dot syntax code blocks cannot render in Pi TUI | Diagrams still serve as text-based logic references; no functional impact |
+
+---
+
+## Dependencies
+
+| Dependency | Version | Notes |
+|------------|---------|-------|
+| **Pi** | ≥ 0.78.0 | Pi coding assistant platform |
+| **pi-subagents** | Built-in (Pi ≥ 0.78.0) | Subagent orchestration engine, provides `subagent` tool and built-in agents (`oracle`, `scout`, `researcher`, `context-builder`) |
+| **Custom Agents** | — | `superpowers-worker`, `superpowers-reviewer`, `superpowers-spec-reviewer` require manual setup (see below) |
+
+### Setup Custom Agents
+
+The three custom agents are not bundled in the package (Pi limitation: agent definitions can only live in `~/.pi/agent/agents/` or `.pi/agents/`).
+
+```bash
+# Copy agent templates from this repo
+cp agents/superpowers-worker.md ~/.pi/agent/agents/
+cp agents/superpowers-reviewer.md ~/.pi/agent/agents/
+cp agents/superpowers-spec-reviewer.md ~/.pi/agent/agents/
+```
+
+Built-in agents (`oracle`, `scout`, `researcher`, `context-builder`) work out of the box.
 
 ---
 

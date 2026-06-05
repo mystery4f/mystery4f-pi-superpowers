@@ -9,7 +9,7 @@
 - 🇨🇳 **中文触发词**：每个技能均支持中英双语触发，中文提问自动匹配对应技能
 - 🔌 **Bootstrap 扩展**：每次会话启动时自动将技能使用规则注入上下文
 - 🔧 **工具映射**：自动将原 Claude Code 工具（`Skill`、`TodoWrite`、`Task`）映射到 Pi 等价操作
-- 🤖 **子代理派发**：集成 [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) 提供 Chain、Parallel、Clarify UI 等完整子代理编排能力
+- 🤖 **子代理派发**：利用 Pi v0.78+ 内置 subagent 能力（Chain、Parallel、Async 等完整编排能力）
 - ⚡ **提示模板**：3个斜杠命令（`/brainstorm`等）
 
 ---
@@ -143,7 +143,7 @@ Pi 的工具名称与原 Claude Code 存在差异，Bootstrap 扩展会将以下
 |--------------------|--------------|
 | `Skill` tool | `read` 工具读取 `skills/<name>/SKILL.md`，或使用 `/skill:<name>` 命令 |
 | `TodoWrite` | `write`/`edit` 工具操作项目根目录的 `TODO.md`（Markdown 复选框格式） |
-| `Task`（子代理派发）| 使用 [pi-subagents](https://github.com/nicobailon/pi-subagents) 的 `subagent` 工具，支持单代理、并行、流水线等多种模式 |
+| `Task`（子代理派发）| 使用 `subagent` 工具（Pi v0.78+ 内置），支持单代理、并行、流水线、后台运行等多种模式 |
 | `Read` | `read`（同名，直接使用）|
 | `Write` | `write`（同名，直接使用）|
 | `Edit` | `edit`（同名，直接使用）|
@@ -173,44 +173,44 @@ Pi 的工具名称与原 Claude Code 存在差异，Bootstrap 扩展会将以下
 
 ---
 
-## pi-subagents 集成
+## Subagent 集成
 
-pi-superpowers 与 [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) 集成，提供完整的子代理编排能力。
+Pi v0.78+ **内置** subagent 能力，无需额外安装。pi-superpowers 直接使用内置 `subagent` 工具实现子代理派发。
 
-**安装 pi-subagents：**
-```bash
-pi install npm:pi-subagents
-```
+> Subagent 基础设施由 Pi 内置提供，支持 Chain、Parallel、Async、后台运行、Worktree 隔离、Intercom 协调、Acceptance Gates 等完整编排能力。
 
 **LLM 调用示例：**
 ```typescript
 // 单代理
-subagent({ agent: "worker", task: "实现用户认证中间件..." })
+subagent({ agent: "superpowers-worker", task: "实现用户认证中间件..." })
 
 // 流水线：实现 → 审查 → 修复
 subagent({ chain: [
-  { agent: "worker", task: "实现 JWT 认证" },
-  { agent: "reviewer", task: "审查 spec 合规性" },
-  { agent: "worker", task: "修复审查发现的问题" }
+  { agent: "superpowers-worker", task: "实现 JWT 认证" },
+  { agent: "superpowers-reviewer", task: "审查 spec 合规性" },
+  { agent: "superpowers-worker", task: "修复审查发现的问题" }
 ]})
 
 // 并行审查
 subagent({ tasks: [
-  { agent: "reviewer", task: "审查 spec 合规性" },
-  { agent: "reviewer", task: "审查代码质量" }
+  { agent: "superpowers-reviewer", task: "审查 spec 合规性" },
+  { agent: "superpowers-reviewer", task: "审查代码质量" }
 ], concurrency: 2 })
 ```
 
 **常用角色映射：**
 
-| 原 superpowers 角色 | pi-subagents 内置 agent | 用法 |
+| 原 superpowers 角色 | 使用的 agent | 用途 |
 |------|------|------|
 | implementer | `superpowers-worker` | 实现代码、编写测试 |
-| spec-reviewer | `superpowers-reviewer` | 审查 spec 合规性 |
+| spec-reviewer | `superpowers-reviewer` 或 `superpowers-spec-reviewer` | 审查 spec 合规性 |
 | code-quality-reviewer | `superpowers-reviewer` | 审查代码质量 |
-| 通用子代理 | `delegate` | 轻量级委托 |
+| 决策诊断 | `oracle` | BLOCKED 时诊断原因、推荐下一步 |
+| 代码侦查 | `scout` | 大型/陌生代码库快速扫描 |
+| 外部调研 | `researcher` | 技术选型、最佳实践调研 |
+| 上下文构建 | `context-builder` | 生成 worker 专用上下文 |
 
-> **注意**：`subagent-driven-development` 和 `dispatching-parallel-agents` 技能的提示模板已更新为使用 `subagent` 工具。
+> **注意**：以上 `superpowers-*` 开头的 agent 需要预先在 `~/.pi/agent/agents/` 目录下创建对应的 `.md` 文件定义（见本仓库 `agents/` 目录参考）。`oracle`、`scout`、`researcher`、`context-builder` 为 Pi 内置 agent。
 
 ---
 
@@ -251,10 +251,33 @@ AI 在本次响应中遵循 using-superpowers 规则
 
 | 限制 | 影响 | 缓解措施 |
 |------|------|---------|
-| 无内置子代理（`Task` 工具不可用） | `subagent-driven-development` 无法真正并行执行 | **使用 [pi-subagents](https://github.com/nicobailon/pi-subagents)** 提供 Chain/Parallel/Clarify UI 等完整子代理编排能力；降级方案：顺序执行模式 |
+| 子代理 agent 需手动配置 | 项目使用 `superpowers-worker` / `superpowers-reviewer` 等自定义 agent 前需先在 `~/.pi/agent/agents/` 创建定义文件 | 参考本仓库 `agents/` 目录下的示例模板；内置 agent（`scout`、`oracle`、`researcher`、`context-builder`）无需配置 |
 | 无 `TodoWrite` 工具 | 任务进度无法用原生 UI 显示 | 用 `TODO.md` 文件追踪，功能等价 |
 | `before_agent_start` 每次都触发 | 需要检测是否已注入 | Bootstrap 扩展用 session ID + turn 计数双重检测 |
 | `using-superpowers` 中的流程图依赖 Graphviz | Dot 语法代码块无法在 Pi TUI 中渲染 | 图表仍可作为文字逻辑参考，不影响功能 |
+
+---
+
+## 依赖
+
+| 依赖项 | 版本要求 | 说明 |
+|--------|----------|------|
+| **Pi** | ≥ 0.78.0 | Pi 编程助手平台 |
+| **pi-subagents** | 内置（Pi ≥ 0.78.0） | Subagent 编排引擎，提供 `subagent` 工具及 `oracle`、`scout`、`researcher`、`context-builder` 等内置 agent |
+| **自定义 Agent** | — | `superpowers-worker`、`superpowers-reviewer`、`superpowers-spec-reviewer` 需手动配置（见下方说明） |
+
+### 配置自定义 Agent
+
+项目需要的三个 agent 不在安装包内（Pi 限制：agent 文件只能放在 `~/.pi/agent/agents/` 或 `.pi/agents/`）。
+
+```bash
+# 从本仓库复制 agent 模板
+cp agents/superpowers-worker.md ~/.pi/agent/agents/
+cp agents/superpowers-reviewer.md ~/.pi/agent/agents/
+cp agents/superpowers-spec-reviewer.md ~/.pi/agent/agents/
+```
+
+内置 agent（`oracle`、`scout`、`researcher`、`context-builder`）无需配置，开箱即用。
 
 ---
 
