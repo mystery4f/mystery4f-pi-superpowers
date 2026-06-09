@@ -113,15 +113,19 @@ describe("shouldInjectBootstrap", () => {
     expect(shouldInjectBootstrap("session-abc", 0)).toBe(true);
   });
 
-  it("returns false when there are prior user messages", () => {
-    expect(shouldInjectBootstrap("session-abc", 1)).toBe(false);
+  // before_agent_start fires AFTER the user message is written to the branch,
+  // so the first user turn actually sees priorUserMessages === 1.
+  it("returns true when 1 prior user message (first turn, message already in branch)", () => {
+    expect(shouldInjectBootstrap("session-abc", 1)).toBe(true);
+  });
+
+  it("returns false when there are 2+ prior user messages", () => {
+    expect(shouldInjectBootstrap("session-abc", 2)).toBe(false);
     expect(shouldInjectBootstrap("session-abc", 5)).toBe(false);
   });
 
   it("returns true again for a different session ID", () => {
-    // First session already injected
     expect(shouldInjectBootstrap("session-abc", 0)).toBe(true);
-    // New session should also inject
     expect(shouldInjectBootstrap("session-xyz", 0)).toBe(true);
   });
 });

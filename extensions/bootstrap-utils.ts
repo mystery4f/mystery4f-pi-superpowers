@@ -55,7 +55,9 @@ export function shouldInjectBootstrap(
   _sessionId: string,
   priorUserMessages: number
 ): boolean {
-  return priorUserMessages === 0;
+  // before_agent_start fires AFTER the user message is written to the branch,
+  // so the first user turn has priorUserMessages === 1, not 0.
+  return priorUserMessages <= 1;
 }
 
 /**

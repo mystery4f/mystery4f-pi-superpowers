@@ -22,7 +22,6 @@ import {
   stripFrontmatter,
   buildPiToolMapping,
   buildBootstrapContent,
-  shouldInjectBootstrap,
 } from "./bootstrap-utils.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -57,42 +56,16 @@ export function assembleBootstrap(skillsDir: string): string | null {
 // Pi Extension Entry Point
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Track the last session that received bootstrap injection
-let lastInjectedSession: string | undefined;
-
 export default function (pi: ExtensionAPI) {
-  // Reset injection tracking whenever a new session starts
   pi.on("session_start", async (_event, ctx) => {
-    lastInjectedSession = undefined;
     ctx.ui.notify("✦ pi-superpowers loaded (superpowers skills available)", "info");
   });
 
-  pi.on("before_agent_start", async (event, ctx) => {
-    const sessionFile = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-
-    // Only inject once per session
-    if (lastInjectedSession === sessionFile) {
-      return {};
-    }
-
-    // Count prior user messages in this session branch
-    const branch = ctx.sessionManager.getBranch();
-    const priorUserMessages = branch.filter(
-      (e) => e.type === "message" && (e.message as any)?.role === "user"
-    ).length;
-
-    if (!shouldInjectBootstrap(sessionFile, priorUserMessages)) {
-      return {};
-    }
-
+  pi.on("before_agent_start", async (event, _ctx) => {
     const bootstrapContent = assembleBootstrap(DEFAULT_SKILLS_DIR);
     if (!bootstrapContent) {
-      ctx.ui.notify("pi-superpowers: could not load using-superpowers skill", "warning");
       return {};
     }
-
-    // Mark this session as injected
-    lastInjectedSession = sessionFile;
 
     return {
       systemPrompt: event.systemPrompt + "\n\n" + bootstrapContent,
